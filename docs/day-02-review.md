@@ -57,10 +57,10 @@ Email confirmation was disabled in the Supabase project for local demo after bui
 
 ## Known blockers / residuals
 
-1. **Git commit / remote push not performed** (explicit approval required).
-2. Dev-only Next.js warnings about `Date.now()` / cache bypass on authenticated routes — pages still return 200.
-3. Browser extension hydration noise (`bis_*`) is unrelated to app auth.
-4. Cross-tenant UI check with a second human user was not required; RLS isolation is covered by the integration test.
+1. Dev-only Next.js warnings about `Date.now()` / cache bypass on authenticated routes — pages still return 200.
+2. Browser extension hydration noise (`bis_*`) is unrelated to app auth.
+3. Cross-tenant UI check with a second human user was not required; RLS isolation is covered by the integration test.
+4. Git evidence: commit `9d520ad` pushed to https://github.com/hangndat/clientflow.
 
 ## Security review (implementation-time)
 
