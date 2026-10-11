@@ -1,9 +1,10 @@
 "use server";
 
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getAppOrigin } from "@/lib/app-origin";
+import { safeInternalPath } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 import { signInSchema, signUpSchema } from "@/lib/validations/auth";
 
@@ -11,18 +12,6 @@ export type AuthActionState = {
   error?: string;
   success?: string;
 };
-
-async function appOrigin(): Promise<string> {
-  const headerStore = await headers();
-  const origin = headerStore.get("origin");
-  if (origin) return origin;
-
-  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
-  const proto = headerStore.get("x-forwarded-proto") ?? "http";
-  if (host) return `${proto}://${host}`;
-
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-}
 
 export async function signUpAction(
   _prev: AuthActionState,
@@ -38,7 +27,7 @@ export async function signUpAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const origin = await appOrigin();
+  const origin = getAppOrigin();
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
@@ -87,9 +76,9 @@ export async function signInAction(
     return { error: error.message };
   }
 
-  const next = String(formData.get("next") || "/dashboard");
+  const next = safeInternalPath(formData.get("next"), "/dashboard");
   revalidatePath("/", "layout");
-  redirect(next.startsWith("/") ? next : "/dashboard");
+  redirect(next);
 }
 
 export async function signOutAction() {

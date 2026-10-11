@@ -241,33 +241,44 @@ create policy "Members can view membership in their orgs"
   to authenticated
   using (public.is_org_member(organization_id));
 
-create policy "Users can insert themselves as owner during bootstrap"
-  on public.organization_members
-  for insert
-  to authenticated
-  with check (
-    user_id = auth.uid()
-    and role = 'owner'
-    and exists (
-      select 1
-      from public.organizations o
-      where o.id = organization_id
-        and o.created_by = auth.uid()
-    )
-  );
+-- No direct INSERT policy: owner membership is created only by
+-- public.create_organization(...) (SECURITY DEFINER), which bypasses RLS.
 
-create policy "Owners and admins can update members"
+create policy "Owners can update memberships"
   on public.organization_members
   for update
   to authenticated
-  using (public.has_org_role(organization_id, array['owner', 'admin']::public.organization_role[]))
-  with check (public.has_org_role(organization_id, array['owner', 'admin']::public.organization_role[]));
+  using (public.has_org_role(organization_id, array['owner']::public.organization_role[]))
+  with check (public.has_org_role(organization_id, array['owner']::public.organization_role[]));
 
-create policy "Owners and admins can delete members"
+-- Admins may manage admin/member rows only; they cannot touch owner rows
+-- or promote anyone (including themselves) to owner.
+create policy "Admins can update non-owner memberships"
+  on public.organization_members
+  for update
+  to authenticated
+  using (
+    public.has_org_role(organization_id, array['admin']::public.organization_role[])
+    and role <> 'owner'
+  )
+  with check (
+    public.has_org_role(organization_id, array['admin']::public.organization_role[])
+    and role <> 'owner'
+  );
+
+create policy "Owners and admins can delete non-owner members"
   on public.organization_members
   for delete
   to authenticated
-  using (public.has_org_role(organization_id, array['owner', 'admin']::public.organization_role[]));
+  using (
+    (
+      public.has_org_role(organization_id, array['owner']::public.organization_role[])
+    )
+    or (
+      public.has_org_role(organization_id, array['admin']::public.organization_role[])
+      and role <> 'owner'
+    )
+  );
 
 -- clients: tenant-scoped
 create policy "Members can view clients in their organization"

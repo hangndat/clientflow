@@ -13,11 +13,14 @@ npm install
 cp .env.example .env.local
 ```
 
-Fill `.env.local` with real project values. Apply:
+Fill `.env.local` with real project values (including `NEXT_PUBLIC_SITE_URL`). Apply migrations in order:
 
 ```text
 supabase/migrations/20261011000000_init_tenant_foundation.sql
+supabase/migrations/20261011000001_harden_member_role_policies.sql
 ```
+
+If the init migration was already applied, run only `20261011000001_harden_member_role_policies.sql`.
 
 Recommended local auth settings for demos:
 

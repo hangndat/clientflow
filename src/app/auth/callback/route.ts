@@ -1,22 +1,17 @@
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
+import { safeInternalPath } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
-
-function safeNextPath(value: string | null): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/onboarding";
-  }
-  return value;
-}
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
-  const next = safeNextPath(searchParams.get("next"));
+  const next = safeInternalPath(searchParams.get("next"), "/onboarding");
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const authError = searchParams.get("error") ?? searchParams.get("error_description");
+  const authError =
+    searchParams.get("error") ?? searchParams.get("error_description");
 
   if (authError) {
     const loginUrl = new URL("/login", origin);

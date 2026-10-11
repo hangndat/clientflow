@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Placeholder public values so Next.js can build without project secrets.
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: public-anon-key-for-ci-build
 

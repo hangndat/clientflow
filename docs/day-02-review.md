@@ -1,79 +1,76 @@
 # Day 02 Review — ClientFlow Foundation
 
 **Date:** 2026-10-11
-**Scope:** Authenticated multi-tenant foundation (auth, organizations, clients, RLS, CI, docs)
+**Scope:** Authenticated multi-tenant foundation + review remediation
 **Repository path:** `/Users/admin/SideProject/clientflow`
+**Reviewed baseline:** `9f68d2b`
 
 ## Acceptance checklist
 
 | Criterion | Status | Notes |
 | --- | --- | --- |
-| Next.js/TS/Tailwind/Supabase foundation | Implemented | Next.js 16 App Router + `@supabase/ssr` proxy pattern |
-| `.env.example` without secrets | Implemented | Placeholder public + service-role keys only |
-| `.cursor/rules/project.mdc` | Implemented | Cursor-only project standards |
-| Schema + SQL migrations | Implemented | profiles, organizations, members, clients |
-| RLS tenant isolation | Implemented in SQL | Integration test present; skipped without live DB |
-| Auth pages + protected routes | Implemented | login/signup/logout + proxy + `requireUser` |
-| Org onboarding + client vertical slice | Implemented | Real Server Actions + persistence |
-| Automated checks without secrets | Verified locally | lint/typecheck/unit/build passed |
+| Next.js/TS/Tailwind/Supabase foundation | Implemented | Next.js 16 App Router + `@supabase/ssr` |
+| Secretless CI commands (local clean) | Verified locally | lint/typecheck/unit+skipped-RLS/build exit 0 without `.next` |
+| GitHub Actions green | Pending | Do not claim Day 02 complete until Actions passes after push |
+| RLS tenant isolation | Verified live (credentialed) | Cross-tenant denial passed after remediation |
+| Membership role hardening SQL | Coded | Apply `20261011000001_harden_member_role_policies.sql` on live project |
+| Membership role integration | Blocked until SQL apply | Admin self-promotion still succeeded on live DB pre-migration |
 | Day 03 features absent | Observed | No projects/documents module |
 
-## Verification log (2026-10-11)
+## Remediation root causes
 
-### Secretless checks (earlier)
+1. **CI `LayoutProps`:** type comes from generated `.next/types`; CI runs `tsc` before `next build`.
+2. **Open redirect:** `next.startsWith("/")` accepted `//evil.example` and similar.
+3. **Email redirect origin:** signup trusted request `Origin` / `Host` headers.
+4. **Owner privilege:** admins could `UPDATE` membership `role` to `owner`; bootstrap INSERT policy was unnecessary with SECURITY DEFINER RPC.
 
-```bash
-export NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co
-export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=public-anon-key-for-ci-build
-npm run lint        # exit 0
-npm run typecheck   # exit 0
-npm run build       # exit 0
-```
+## Verification log (remediation session)
 
-### Live Supabase verification (later same day)
-
-Manual vertical slice observed in Next.js logs:
-
-- `POST /onboarding` → `createOrganizationAction` 200
-- `GET /dashboard` 200
-- `GET /clients` 200
-- `POST /clients` → `createClientAction` 200
-
-Database snapshot (service-role count, no PII logged):
-
-- users: 1 confirmed
-- organizations: 1 (with owner membership)
-- clients: 1 (org-scoped, no orphans)
-- `manual_slice_db_ok: YES`
-
-Automated tests against live project:
+### Secretless / CI-equivalent (placeholder env, no service role)
 
 ```bash
-npm run test:unit          # 8 passed
-npm run test:integration   # prevents cross-tenant client reads and writes — passed
+rm -rf .next node_modules && npm ci          # exit 0
+NEXT_PUBLIC_SITE_URL=http://localhost:3000 \
+NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co \
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=public-anon-key-for-ci-build \
+npm run lint                                 # exit 0
+npm run typecheck                            # exit 0
+npm test                                     # exit 0 (20 passed, 2 skipped)
+npm run build                                # exit 0
 ```
 
-Email confirmation was disabled in the Supabase project for local demo after built-in SMTP rate limiting blocked further confirmation emails.
+### Credentialed local integration
 
-## Known blockers / residuals
+```bash
+npm run test:integration
+```
 
-1. Dev-only Next.js warnings about `Date.now()` / cache bypass on authenticated routes — pages still return 200.
-2. Browser extension hydration noise (`bis_*`) is unrelated to app auth.
-3. Cross-tenant UI check with a second human user was not required; RLS isolation is covered by the integration test.
-4. Git evidence: commit `9d520ad` pushed to https://github.com/hangndat/clientflow.
+| Suite | Result |
+| --- | --- |
+| Cross-tenant client isolation | **passed** (~4.0s) |
+| Admin self-promotion / forged owner bootstrap | **failed** — admin could still set `role=owner` because migration `00001` not yet applied on the live project |
 
-## Security review (implementation-time)
+### GitHub Actions
 
-- Tenant reads/writes gated by `is_org_member` RLS helper
-- Service-role key not referenced in browser client code
-- Proxy uses `getClaims()`; protected pages use `getUser()`
-- Organization cookie preference re-checked against membership before use
-- Residual: email confirmation policy, rate limits, and audit logging deferred
+Not verified in this session (no commit/push requested). Required after landing the fix:
+
+1. Push branch/commit
+2. Confirm workflow **CI / verify** is green for lint, typecheck, test, build
+
+## Required live DB step
+
+In Supabase SQL Editor, run:
+
+```text
+supabase/migrations/20261011000001_harden_member_role_policies.sql
+```
+
+Then re-run `npm run test:integration` and expect both suites to pass.
 
 ## Suggested commit
 
 ```text
-feat(clientflow): establish authenticated tenant foundation
+fix(clientflow): resolve CI and harden auth redirects
 ```
 
-Do not treat the commit as complete until it exists in git history.
+Do not claim Day 02 complete until GitHub Actions passes for this fix.
