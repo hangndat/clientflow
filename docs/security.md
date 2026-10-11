@@ -44,3 +44,5 @@ supabase/migrations/20261011000001_harden_member_role_policies.sql
 - No audit log for membership or client mutations yet.
 - Secretless CI proves lint/typecheck/unit/build only. Live RLS/role integration tests require project credentials and are skipped in GitHub Actions unless secrets are configured.
 - `NEXT_PUBLIC_SITE_URL` must match an allow-listed Redirect URL in the Supabase Auth settings.
+- `/auth/callback` redirects use the request URL origin for `Location`; only the `next` path is sanitized via `safeInternalPath()`. Keep deployment hosts and Auth allow-lists aligned with `NEXT_PUBLIC_SITE_URL`.
+- Onboarding uses `create_organization()` only. A live project probe observed direct `organizations` INSERT rejected by RLS (`42501`); treat SQL policy drift across environments as an ops checklist item.

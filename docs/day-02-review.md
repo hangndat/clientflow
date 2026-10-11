@@ -1,76 +1,76 @@
 # Day 02 Review — ClientFlow Foundation
 
 **Date:** 2026-10-11
-**Scope:** Authenticated multi-tenant foundation + review remediation
+**Scope:** Authenticated multi-tenant foundation + security verification
 **Repository path:** `/Users/admin/SideProject/clientflow`
-**Reviewed baseline:** `9f68d2b`
+**Code baseline:** `94abd04` (`fix(clientflow): resolve CI and harden auth redirects`)
 
 ## Acceptance checklist
 
 | Criterion | Status | Notes |
 | --- | --- | --- |
-| Next.js/TS/Tailwind/Supabase foundation | Implemented | Next.js 16 App Router + `@supabase/ssr` |
-| Secretless CI commands (local clean) | Verified locally | lint/typecheck/unit+skipped-RLS/build exit 0 without `.next` |
-| GitHub Actions green | Pending | Do not claim Day 02 complete until Actions passes after push |
-| RLS tenant isolation | Verified live (credentialed) | Cross-tenant denial passed after remediation |
-| Membership role hardening SQL | Coded | Apply `20261011000001_harden_member_role_policies.sql` on live project |
-| Membership role integration | Blocked until SQL apply | Admin self-promotion still succeeded on live DB pre-migration |
+| Foundation + vertical slice | Verified | Auth, org, clients, docs, CI scaffold |
+| GitHub Actions (secretless) | Verified | Run on `94abd04` — success; 20 passed, 2 integration skipped |
+| Membership hardening migration on live DB | Verified applied | Probe: admin self-promotion blocked; forged owner INSERT blocked |
+| Credentialed RLS — cross-tenant | Verified live | Integration suite passed |
+| Credentialed RLS — role hardening | Verified live | Integration suite passed |
 | Day 03 features absent | Observed | No projects/documents module |
 
-## Remediation root causes
+## Migration status
 
-1. **CI `LayoutProps`:** type comes from generated `.next/types`; CI runs `tsc` before `next build`.
-2. **Open redirect:** `next.startsWith("/")` accepted `//evil.example` and similar.
-3. **Email redirect origin:** signup trusted request `Origin` / `Host` headers.
-4. **Owner privilege:** admins could `UPDATE` membership `role` to `owner`; bootstrap INSERT policy was unnecessary with SECURITY DEFINER RPC.
+| Migration | Live project |
+| --- | --- |
+| `20261011000000_init_tenant_foundation.sql` | Applied (earlier) |
+| `20261011000001_harden_member_role_policies.sql` | **Applied** — behavioral probe confirmed; no DDL re-run needed (avoided reset/drop) |
 
-## Verification log (remediation session)
+Probe results (ephemeral users cleaned up; no secrets logged):
 
-### Secretless / CI-equivalent (placeholder env, no service role)
+- `hardening_migration_applied: true`
+- Admin promote to owner: blocked (`role` remained `admin`)
+- Forged owner membership INSERT: blocked
+- Direct `organizations` INSERT by authenticated user: blocked (`42501` RLS) on this project
 
-```bash
-rm -rf .next node_modules && npm ci          # exit 0
-NEXT_PUBLIC_SITE_URL=http://localhost:3000 \
-NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co \
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=public-anon-key-for-ci-build \
-npm run lint                                 # exit 0
-npm run typecheck                            # exit 0
-npm test                                     # exit 0 (20 passed, 2 skipped)
-npm run build                                # exit 0
-```
+## CI results (GitHub Actions)
 
-### Credentialed local integration
+- Workflow: [CI / verify @ 94abd04](https://github.com/hangndat/clientflow/actions/runs/38139219095)
+- Conclusion: **success**
+- Secretless tests: **20 passed**, **2 skipped** (credentialed RLS suites)
+- Distinguishes from local credentialed evidence below
+
+## Local verification (this session)
+
+### Credentialed integration
 
 ```bash
 npm run test:integration
+# exit 0
+# prevents cross-tenant client reads and writes — passed (~4.1s)
+# blocks unauthorized owner bootstrap and admin self-promotion — passed (~4.5s)
 ```
 
-| Suite | Result |
-| --- | --- |
-| Cross-tenant client isolation | **passed** (~4.0s) |
-| Admin self-promotion / forged owner bootstrap | **failed** — admin could still set `role=owner` because migration `00001` not yet applied on the live project |
+### Full local suite + quality gates
 
-### GitHub Actions
+```bash
+npm run lint        # exit 0
+npm run typecheck   # exit 0
+npm test            # exit 0 — 20 passed, 2 skipped when suites re-run with credentials: both RLS cases passed again (~2.8–3.0s each)
+npm run build       # exit 0
+```
 
-Not verified in this session (no commit/push requested). Required after landing the fix:
+Note: `npm test` in this session loaded `.env.local`, so integration cases **ran and passed** (not skipped). GitHub Actions without secrets still skips those two cases — that is expected.
 
-1. Push branch/commit
-2. Confirm workflow **CI / verify** is green for lint, typecheck, test, build
+## Remaining risks (reviewed)
 
-## Required live DB step
+1. **Callback redirect origin:** `/auth/callback` builds success/error `Location` from the request URL `origin` (the host the browser hit). Post-auth `next` is sanitized by `safeInternalPath()`. Email confirmation links use canonical `getAppOrigin()` / `NEXT_PUBLIC_SITE_URL`, not request headers. Residual: deploy behind unexpected hosts must keep Auth redirect allow-list aligned with `NEXT_PUBLIC_SITE_URL`.
+2. **Direct organization INSERT:** App onboarding uses `create_organization()` RPC only. Live DB currently **rejects** direct `organizations` INSERT via RLS (`42501`). Init SQL still documents an authenticated INSERT policy — treat repo SQL vs live policy set as a drift to keep in mind on fresh environments; prefer RPC-only bootstrap.
+3. **Secretless CI cannot prove RLS:** Actions green ≠ live tenant isolation proof; credentialed tests remain a local/ops responsibility unless secrets are added carefully to CI.
+4. **Email/SMTP:** Built-in Supabase email remains rate-limited; confirm-email settings are project-specific.
+5. **No app-layer rate limits / audit log** yet (Day 02 non-goals).
 
-In Supabase SQL Editor, run:
+## Suggested commit (docs only; not created)
 
 ```text
-supabase/migrations/20261011000001_harden_member_role_policies.sql
+docs(clientflow): record Day 02 live RLS verification evidence
 ```
 
-Then re-run `npm run test:integration` and expect both suites to pass.
-
-## Suggested commit
-
-```text
-fix(clientflow): resolve CI and harden auth redirects
-```
-
-Do not claim Day 02 complete until GitHub Actions passes for this fix.
+Portfolio hub progress should be updated in the same verification window after this file lands.
