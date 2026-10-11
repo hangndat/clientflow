@@ -1,0 +1,39 @@
+---
+description: ClientFlow project engineering standards
+alwaysApply: true
+---
+
+# ClientFlow engineering standards
+
+ClientFlow is a multi-tenant SaaS client portal showcase. Cursor is the only AI coding assistant for this repository.
+
+## Language
+
+- Talk to the developer in Vietnamese when chatting about this project.
+- Write code, comments, commits, and technical docs in clear professional English.
+
+## Architecture
+
+- Prefer feature-oriented modules under `src/features/*` with thin App Router pages.
+- Keep Supabase access in `src/lib/supabase/*` using `@supabase/ssr` (no deprecated auth helpers).
+- Enforce tenant isolation in PostgreSQL RLS. Application checks are defense-in-depth, not the only gate.
+- Do not put `SUPABASE_SERVICE_ROLE_KEY` in client components, public env vars, or browser bundles.
+
+## Security
+
+- Validate inputs with Zod before writes.
+- Protect dashboard routes with server-side session validation (`getUser` / `getClaims`).
+- Never trust organization IDs from the client without membership verification + RLS.
+- Never commit secrets, `.env.local`, or service-role keys.
+
+## Quality bar
+
+- Prefer small vertical slices with acceptance criteria.
+- Avoid unnecessary dependencies and premature abstractions.
+- Do not fabricate test results, deployments, or completed features.
+- Do not commit, push, change remotes, or deploy unless explicitly asked.
+
+## Day boundaries
+
+- Day 02 foundation: auth, organizations, clients vertical slice, RLS, CI, docs.
+- Do not implement Day 03 scope (full project/document management) unless requested.

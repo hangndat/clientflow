@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ClientFlow
 
-## Getting Started
+Multi-tenant SaaS client portal foundation built with Next.js App Router, TypeScript, Tailwind CSS, and Supabase (Auth + PostgreSQL RLS).
 
-First, run the development server:
+This repository is a portfolio showcase of production-minded tenancy boundaries: authentication, organization membership, and tenant-safe client records.
+
+## Stack
+
+- Next.js 16 (App Router)
+- TypeScript (strict)
+- Tailwind CSS
+- Supabase Auth + PostgreSQL + Row Level Security
+- Vitest
+- GitHub Actions CI
+
+## Features (Day 02 foundation)
+
+1. Email/password signup and login via Supabase Auth
+2. Server-side session refresh through Next.js `proxy.ts` + `@supabase/ssr`
+3. Organization create/select onboarding
+4. Protected dashboard
+5. Create and list clients for the active organization
+6. PostgreSQL RLS policies that deny cross-tenant access
+
+## Quick start
+
+### 1. Install
+
+```bash
+npm install
+cp .env.example .env.local
+```
+
+### 2. Configure Supabase
+
+1. Create a Supabase project.
+2. Copy the project URL and publishable (or anon) key into `.env.local`.
+3. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only for integration tests.
+4. Apply the SQL migration in the Supabase SQL editor or CLI:
+
+```bash
+# SQL file
+supabase/migrations/20261011000000_init_tenant_foundation.sql
+```
+
+5. In Authentication settings, disable email confirmation for local demos or configure the auth callback URL:
+
+```text
+http://localhost:3000/auth/callback
+```
+
+### 3. Run
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Verification commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run typecheck
+npm run test:unit
+npm test
+npm run build
+```
 
-## Learn More
+RLS integration tests run automatically when these are present:
 
-To learn more about Next.js, take a look at the following resources:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (or `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
+- `SUPABASE_SERVICE_ROLE_KEY`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Without those secrets, integration cases are skipped and documented as blocked.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project structure
 
-## Deploy on Vercel
+```text
+src/
+  app/                 # App Router pages and layouts
+  components/          # Shared UI shell pieces
+  features/            # Auth, organizations, clients vertical slices
+  lib/                 # Supabase clients, auth helpers, validations
+  types/               # Database types
+supabase/migrations/   # Versioned SQL schema + RLS
+tests/                 # Unit + optional RLS integration tests
+docs/                  # Architecture, security, development notes
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Documentation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Architecture](docs/architecture.md)
+- [Security](docs/security.md)
+- [Development](docs/development.md)
+- [Day 02 review](docs/day-02-review.md)
+
+## Known limitations
+
+- No project/document management yet (Day 03 scope).
+- Organization invite flows are not implemented; members are created through the `create_organization` RPC as owners.
+- End-to-end browser tests are not included in Day 02.
+- RLS integration tests require a live Supabase project and are skipped in secretless CI.
+
+## Suggested first commit
+
+```text
+feat(clientflow): establish authenticated tenant foundation
+```
