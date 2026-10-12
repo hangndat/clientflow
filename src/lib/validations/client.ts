@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-export const createClientSchema = z.object({
-  organizationId: z.string().uuid("Invalid organization"),
+const clientFields = {
   name: z
     .string()
     .trim()
@@ -15,6 +14,24 @@ export const createClientSchema = z.object({
     .or(z.literal("")),
   company: z.string().trim().max(120, "Company name is too long").optional(),
   notes: z.string().trim().max(2000, "Notes are too long").optional(),
+};
+
+export const createClientSchema = z.object({
+  organizationId: z.string().uuid("Invalid organization"),
+  ...clientFields,
+});
+
+export const updateClientSchema = z.object({
+  clientId: z.string().uuid("Invalid client"),
+  organizationId: z.string().uuid("Invalid organization"),
+  ...clientFields,
+});
+
+export const deleteClientSchema = z.object({
+  clientId: z.string().uuid("Invalid client"),
+  organizationId: z.string().uuid("Invalid organization"),
 });
 
 export type CreateClientInput = z.infer<typeof createClientSchema>;
+export type UpdateClientInput = z.infer<typeof updateClientSchema>;
+export type DeleteClientInput = z.infer<typeof deleteClientSchema>;

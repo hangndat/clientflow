@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { CreateClientForm } from "@/features/clients/components/create-client-form";
@@ -61,7 +62,12 @@ export default async function ClientsPage() {
               <li key={client.id} className="py-4">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="font-medium text-slate-900">{client.name}</p>
+                    <Link
+                      href={`/clients/${client.id}`}
+                      className="font-medium text-slate-900 hover:text-teal-800 hover:underline"
+                    >
+                      {client.name}
+                    </Link>
                     <p className="text-sm text-slate-600">
                       {[client.company, client.email]
                         .filter(Boolean)
