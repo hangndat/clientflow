@@ -75,6 +75,9 @@ jobs:
           fi
 
       - name: Playwright smoke + auth callback E2E
+        env:
+          # Keep host identical to NEXT_PUBLIC_SITE_URL so callback cookies stick.
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
         run: |
           npx playwright install --with-deps chromium
           npm run build
@@ -82,13 +85,13 @@ jobs:
           APP_PID=$!
           trap 'kill $APP_PID' EXIT
           for i in $(seq 1 60); do
-            if curl -sf http://127.0.0.1:3000/login >/dev/null; then
+            if curl -sf http://localhost:3000/login >/dev/null; then
               break
             fi
             sleep 1
           done
-          curl -sf http://127.0.0.1:3000/login >/dev/null
-          PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run test:e2e
+          curl -sf http://localhost:3000/login >/dev/null
+          npm run test:e2e
 
       - name: Stop Supabase
         if: always()
