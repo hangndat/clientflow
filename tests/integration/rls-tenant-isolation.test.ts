@@ -1,50 +1,23 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 
 import type { Database } from "@/types/database";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const publishableKey =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import {
+  assertIntegrationAvailable,
+  canRunIntegration,
+  createAuthedUser,
+  getIntegrationEnv,
+} from "./_helpers";
 
-const canRun = Boolean(url && publishableKey && serviceRoleKey);
-
-async function createAuthedUser(
-  admin: SupabaseClient<Database>,
-  email: string,
-  password: string,
-) {
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: email.split("@")[0] },
-  });
-  if (error || !data.user) {
-    throw error ?? new Error("Failed to create user");
-  }
-
-  const userClient = createClient<Database>(url!, publishableKey!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const { error: signInError } = await userClient.auth.signInWithPassword({
-    email,
-    password,
-  });
-  if (signInError) {
-    throw signInError;
-  }
-
-  return { user: data.user, client: userClient };
-}
+const canRun = canRunIntegration();
+assertIntegrationAvailable();
 
 describe("RLS tenant isolation", () => {
   it.skipIf(!canRun)(
     "prevents cross-tenant client reads and writes",
     async () => {
+      const { url, publishableKey, serviceRoleKey } = getIntegrationEnv();
       const admin = createClient<Database>(url!, serviceRoleKey!, {
         auth: { persistSession: false, autoRefreshToken: false },
       });
@@ -58,11 +31,15 @@ describe("RLS tenant isolation", () => {
           admin,
           `tenant-a-${suffix}@example.com`,
           password,
+          url!,
+          publishableKey!,
         );
         const userB = await createAuthedUser(
           admin,
           `tenant-b-${suffix}@example.com`,
           password,
+          url!,
+          publishableKey!,
         );
         createdUserIds.push(userA.user.id, userB.user.id);
 
@@ -156,10 +133,4 @@ describe("RLS tenant isolation", () => {
     },
   );
 
-  it.skipIf(canRun)(
-    "skips when Supabase credentials are unavailable",
-    () => {
-      expect(canRun).toBe(false);
-    },
-  );
 });

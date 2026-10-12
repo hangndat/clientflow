@@ -31,8 +31,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Unit and guarded integration tests
-        run: npm test
+      - name: Unit tests (secretless)
+        run: npm run test:unit
 
       - name: Production build
         run: npm run build

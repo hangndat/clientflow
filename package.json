@@ -11,7 +11,12 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
-    "test:watch": "vitest"
+    "test:integration:required": "INTEGRATION_REQUIRED=1 vitest run tests/integration",
+    "test:watch": "vitest",
+    "db:start": "npx supabase start",
+    "db:stop": "npx supabase stop",
+    "db:status": "npx supabase status",
+    "db:verify-policies": "psql \"${DB_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}\" -f scripts/verify-org-insert-policies.sql"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

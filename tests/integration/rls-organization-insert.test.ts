@@ -1,50 +1,23 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 
 import type { Database } from "@/types/database";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const publishableKey =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import {
+  assertIntegrationAvailable,
+  canRunIntegration,
+  createAuthedUser,
+  getIntegrationEnv,
+} from "./_helpers";
 
-const canRun = Boolean(url && publishableKey && serviceRoleKey);
-
-async function createAuthedUser(
-  admin: SupabaseClient<Database>,
-  email: string,
-  password: string,
-) {
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: email.split("@")[0] },
-  });
-  if (error || !data.user) {
-    throw error ?? new Error("Failed to create user");
-  }
-
-  const userClient = createClient<Database>(url!, publishableKey!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const { error: signInError } = await userClient.auth.signInWithPassword({
-    email,
-    password,
-  });
-  if (signInError) {
-    throw signInError;
-  }
-
-  return { user: data.user, client: userClient };
-}
+const canRun = canRunIntegration();
+assertIntegrationAvailable();
 
 describe("RLS organization INSERT alignment", () => {
   it.skipIf(!canRun)(
     "denies direct org INSERT, allows RPC bootstrap, blocks membership escalation",
     async () => {
+      const { url, publishableKey, serviceRoleKey } = getIntegrationEnv();
       const admin = createClient<Database>(url!, serviceRoleKey!, {
         auth: { persistSession: false, autoRefreshToken: false },
       });
@@ -59,15 +32,18 @@ describe("RLS organization INSERT alignment", () => {
           admin,
           `org-creator-${suffix}@example.com`,
           password,
+          url!,
+          publishableKey!,
         );
         const outsider = await createAuthedUser(
           admin,
           `org-outsider-${suffix}@example.com`,
           password,
+          url!,
+          publishableKey!,
         );
         createdUserIds.push(creator.user.id, outsider.user.id);
 
-        // Negative: authenticated direct INSERT must be denied (RPC-only).
         const { data: directOrg, error: directError } = await creator.client
           .from("organizations")
           .insert({
@@ -81,7 +57,6 @@ describe("RLS organization INSERT alignment", () => {
         expect(directOrg).toBeNull();
         expect(directError?.code).toBe("42501");
 
-        // Positive: RPC creates org + owner membership with correct ownership.
         const { data: rpcData, error: rpcError } = await creator.client.rpc(
           "create_organization",
           {
@@ -106,7 +81,6 @@ describe("RLS organization INSERT alignment", () => {
         expect(membershipError).toBeNull();
         expect(membership?.role).toBe("owner");
 
-        // Negative: outsider cannot forge membership on another tenant.
         const { data: forged, error: forgedError } = await outsider.client
           .from("organization_members")
           .insert({
@@ -120,8 +94,6 @@ describe("RLS organization INSERT alignment", () => {
         expect(forged).toBeNull();
         expect(forgedError?.code).toBe("42501");
 
-        // Negative: creator cannot self-insert a second escalated membership row
-        // for another user via the authenticated client.
         const { data: crossInsert, error: crossError } = await creator.client
           .from("organization_members")
           .insert({
@@ -135,7 +107,6 @@ describe("RLS organization INSERT alignment", () => {
         expect(crossInsert).toBeNull();
         expect(crossError?.code).toBe("42501");
 
-        // Negative: anonymous/unauthenticated RPC must fail.
         const anon = createClient<Database>(url!, publishableKey!, {
           auth: { persistSession: false, autoRefreshToken: false },
         });
@@ -155,10 +126,4 @@ describe("RLS organization INSERT alignment", () => {
     },
   );
 
-  it.skipIf(canRun)(
-    "skips when Supabase credentials are unavailable",
-    () => {
-      expect(canRun).toBe(false);
-    },
-  );
 });

@@ -1,50 +1,23 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 
 import type { Database } from "@/types/database";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const publishableKey =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import {
+  assertIntegrationAvailable,
+  canRunIntegration,
+  createAuthedUser,
+  getIntegrationEnv,
+} from "./_helpers";
 
-const canRun = Boolean(url && publishableKey && serviceRoleKey);
-
-async function createAuthedUser(
-  admin: SupabaseClient<Database>,
-  email: string,
-  password: string,
-) {
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: email.split("@")[0] },
-  });
-  if (error || !data.user) {
-    throw error ?? new Error("Failed to create user");
-  }
-
-  const userClient = createClient<Database>(url!, publishableKey!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const { error: signInError } = await userClient.auth.signInWithPassword({
-    email,
-    password,
-  });
-  if (signInError) {
-    throw signInError;
-  }
-
-  return { user: data.user, client: userClient };
-}
+const canRun = canRunIntegration();
+assertIntegrationAvailable();
 
 describe("RLS membership role hardening", () => {
   it.skipIf(!canRun)(
     "blocks unauthorized owner bootstrap and admin self-promotion",
     async () => {
+      const { url, publishableKey, serviceRoleKey } = getIntegrationEnv();
       const admin = createClient<Database>(url!, serviceRoleKey!, {
         auth: { persistSession: false, autoRefreshToken: false },
       });
@@ -58,16 +31,22 @@ describe("RLS membership role hardening", () => {
           admin,
           `owner-${suffix}@example.com`,
           password,
+          url!,
+          publishableKey!,
         );
         const adminUser = await createAuthedUser(
           admin,
           `admin-${suffix}@example.com`,
           password,
+          url!,
+          publishableKey!,
         );
         const outsider = await createAuthedUser(
           admin,
           `outsider-${suffix}@example.com`,
           password,
+          url!,
+          publishableKey!,
         );
         createdUserIds.push(owner.user.id, adminUser.user.id, outsider.user.id);
 
@@ -82,7 +61,6 @@ describe("RLS membership role hardening", () => {
         const organization = Array.isArray(orgData) ? orgData[0] : orgData;
         expect(organization?.id).toBeTruthy();
 
-        // Owner invites admin via service role (no invite UI in Day 02).
         const { error: memberInsertError } = await admin
           .from("organization_members")
           .insert({
@@ -92,7 +70,6 @@ describe("RLS membership role hardening", () => {
           });
         expect(memberInsertError).toBeNull();
 
-        // Outsider cannot forge owner membership on another org.
         const { data: forgedOwner, error: forgedOwnerError } =
           await outsider.client
             .from("organization_members")
@@ -106,7 +83,6 @@ describe("RLS membership role hardening", () => {
         expect(forgedOwner).toBeNull();
         expect(forgedOwnerError).toBeTruthy();
 
-        // Admin cannot promote themselves to owner.
         const { data: adminMembership } = await adminUser.client
           .from("organization_members")
           .select("id, role")
@@ -132,7 +108,6 @@ describe("RLS membership role hardening", () => {
           .single();
         expect(stillAdmin?.role).toBe("admin");
 
-        // Owner can still assign admin/member roles.
         const { error: ownerUpdateError } = await owner.client
           .from("organization_members")
           .update({ role: "member" })
@@ -146,10 +121,4 @@ describe("RLS membership role hardening", () => {
     },
   );
 
-  it.skipIf(canRun)(
-    "skips when Supabase credentials are unavailable",
-    () => {
-      expect(canRun).toBe(false);
-    },
-  );
 });
