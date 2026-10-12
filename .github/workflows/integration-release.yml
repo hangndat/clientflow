@@ -56,17 +56,20 @@ jobs:
           test "$INSERT_COUNT" = "0"
 
       - name: Credentialed RLS integration (non-skippable)
+        env:
+          NO_COLOR: "1"
+          FORCE_COLOR: "0"
         run: |
           set -euo pipefail
-          OUTPUT=$(npm run test:integration:required 2>&1)
-          echo "$OUTPUT"
-          echo "$OUTPUT" | grep -Eq "Tests +[0-9]+ passed" 
-          # Fail if Vitest reports any skipped cases in a required gate.
-          if echo "$OUTPUT" | grep -Eq "Tests +[0-9]+ passed \| [1-9][0-9]* skipped"; then
+          # Vitest exit code is the source of truth; also reject any skipped cases.
+          OUTPUT=$(npm run test:integration:required 2>&1 | tee /dev/stderr)
+          PLAIN=$(printf '%s' "$OUTPUT" | sed 's/\x1b\[[0-9;]*m//g')
+          echo "$PLAIN" | grep -Eq 'Tests[[:space:]]+[1-9][0-9]* passed'
+          if echo "$PLAIN" | grep -Eq 'Tests[[:space:]]+[0-9]+ passed \| [1-9][0-9]* skipped'; then
             echo "Integration release gate must not skip tests"
             exit 1
           fi
-          if echo "$OUTPUT" | grep -Eq "[1-9][0-9]* skipped"; then
+          if echo "$PLAIN" | grep -Eq '[1-9][0-9]* skipped'; then
             echo "Integration release gate must not skip tests"
             exit 1
           fi
