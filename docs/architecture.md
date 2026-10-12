@@ -31,14 +31,15 @@ Browser
 | `organization_members` | Membership rows visible to org members |
 | `clients` | Strictly scoped by `organization_id` + membership |
 
-Organization creation uses the `create_organization(name, slug)` SECURITY DEFINER RPC so the org row and owner membership are inserted atomically.
+Organization creation uses the `create_organization(name, slug)` SECURITY DEFINER RPC so the org row and owner membership are inserted atomically. Authenticated clients have **no** direct INSERT policy on `organizations` or `organization_members` (see `20261012000000_align_organizations_insert_rpc_only.sql`).
 
 ## Auth and session model
 
 1. Browser and Server Components use the publishable/anon key only.
 2. Next.js `src/proxy.ts` refreshes sessions with `supabase.auth.getClaims()`.
-3. Protected pages call `supabase.auth.getUser()` before loading tenant data.
-4. Active organization preference is stored in an HTTP-only cookie (`cf_active_org`) and re-checked against membership before use.
+3. `/auth/callback` exchanges PKCE/`token_hash` and sets session cookies on the redirect response; redirect origin comes from `getTrustedRedirectOrigin()` (allow-listed request origin or canonical `NEXT_PUBLIC_SITE_URL`).
+4. Protected pages call `supabase.auth.getUser()` before loading tenant data.
+5. Active organization preference is stored in an HTTP-only cookie (`cf_active_org`) and re-checked against membership before use.
 
 ## Request flow (vertical slice)
 

@@ -1,17 +1,46 @@
-import { NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
+import { getTrustedRedirectOrigin } from "@/lib/app-origin";
+import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/env";
 import { safeInternalPath } from "@/lib/safe-redirect";
-import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database";
 
-export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const next = safeInternalPath(searchParams.get("next"), "/onboarding");
-  const code = searchParams.get("code");
-  const tokenHash = searchParams.get("token_hash");
-  const type = searchParams.get("type") as EmailOtpType | null;
+function createCallbackClient(request: NextRequest, location: string) {
+  const response = NextResponse.redirect(location);
+
+  // Bind session cookies to the redirect response (SSR PKCE exchange).
+  const supabase = createServerClient<Database>(
+    getSupabaseUrl(),
+    getSupabasePublishableKey(),
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    },
+  );
+
+  return { response, supabase };
+}
+
+export async function GET(request: NextRequest) {
+  const requestUrl = new URL(request.url);
+  const origin = getTrustedRedirectOrigin(requestUrl);
+  const next = safeInternalPath(requestUrl.searchParams.get("next"), "/onboarding");
+  const code = requestUrl.searchParams.get("code");
+  const tokenHash = requestUrl.searchParams.get("token_hash");
+  const type = requestUrl.searchParams.get("type") as EmailOtpType | null;
   const authError =
-    searchParams.get("error") ?? searchParams.get("error_description");
+    requestUrl.searchParams.get("error") ??
+    requestUrl.searchParams.get("error_description");
 
   if (authError) {
     const loginUrl = new URL("/login", origin);
@@ -19,23 +48,29 @@ export async function GET(request: Request) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const supabase = await createClient();
-
   if (code) {
+    const { response, supabase } = createCallbackClient(
+      request,
+      `${origin}${next}`,
+    );
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return response;
     }
   }
 
   // Email templates that link directly with token_hash + type.
   if (tokenHash && type) {
+    const { response, supabase } = createCallbackClient(
+      request,
+      `${origin}${next}`,
+    );
     const { error } = await supabase.auth.verifyOtp({
       type,
       token_hash: tokenHash,
     });
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return response;
     }
   }
 

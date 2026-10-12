@@ -18,9 +18,18 @@ Fill `.env.local` with real project values (including `NEXT_PUBLIC_SITE_URL`). A
 ```text
 supabase/migrations/20261011000000_init_tenant_foundation.sql
 supabase/migrations/20261011000001_harden_member_role_policies.sql
+supabase/migrations/20261012000000_align_organizations_insert_rpc_only.sql
 ```
 
-If the init migration was already applied, run only `20261011000001_harden_member_role_policies.sql`.
+If earlier migrations were already applied, run only the missing forward files. Do not edit already-applied migration files as the sole fix.
+
+### Supabase Auth (local / deploy)
+
+| Setting | Value |
+| --- | --- |
+| Site URL | Same as `NEXT_PUBLIC_SITE_URL` |
+| Redirect URLs | `{SITE_URL}/auth/callback`, plus localhost and any preview origins |
+| Optional | `AUTH_ALLOWED_ORIGINS` for extra callback hosts |
 
 Recommended local auth settings for demos:
 

@@ -36,14 +36,18 @@ cp .env.example .env.local
 1. Create a Supabase project.
 2. Copy the project URL and publishable (or anon) key into `.env.local`.
 3. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only for integration tests.
-4. Apply the SQL migration in the Supabase SQL editor or CLI:
+4. Apply SQL migrations in order (SQL editor or CLI):
 
-```bash
-# SQL file
+```text
 supabase/migrations/20261011000000_init_tenant_foundation.sql
+supabase/migrations/20261011000001_harden_member_role_policies.sql
+supabase/migrations/20261012000000_align_organizations_insert_rpc_only.sql
 ```
 
-5. In Authentication settings, disable email confirmation for local demos or configure the auth callback URL:
+5. In Authentication settings:
+   - **Site URL** = `NEXT_PUBLIC_SITE_URL` (e.g. `http://localhost:3000`)
+   - **Redirect URLs** include `{SITE_URL}/auth/callback` (and preview origins if used)
+   - For local demos you may disable email confirmation
 
 ```text
 http://localhost:3000/auth/callback
@@ -95,13 +99,15 @@ docs/                  # Architecture, security, development notes
 - [Security](docs/security.md)
 - [Development](docs/development.md)
 - [Day 02 review](docs/day-02-review.md)
+- [Day 03 remediation plan](docs/day-03-remediation-plan.md)
 
 ## Known limitations
 
-- No project/document management yet (Day 03 scope).
+- Full project/document product scope is not part of the Day 03 P0 blocker fix.
 - Organization invite flows are not implemented; members are created through the `create_organization` RPC as owners.
-- End-to-end browser tests are not included in Day 02.
+- End-to-end browser tests are not included.
 - RLS integration tests require a live Supabase project and are skipped in secretless CI.
+- Local Supabase CLI/Docker is not required for app development; fresh local DB reset is optional ops tooling.
 
 ## Suggested first commit
 
