@@ -13,14 +13,17 @@ This repository is a portfolio showcase of production-minded tenancy boundaries:
 - Vitest
 - GitHub Actions CI
 
-## Features (Day 02 foundation)
+## Features
 
-1. Email/password signup and login via Supabase Auth
+1. Email/password signup and login via Supabase Auth (trusted callback origins + cookie-bound PKCE exchange)
 2. Server-side session refresh through Next.js `proxy.ts` + `@supabase/ssr`
-3. Organization create/select onboarding
-4. Protected dashboard
-5. Create and list clients for the active organization
-6. PostgreSQL RLS policies that deny cross-tenant access
+3. Organization create/select onboarding (`create_organization` RPC only)
+4. Protected dashboard with activity summary
+5. Client CRUD, Project CRUD, secure document uploads (private Storage bucket)
+6. External client portal links (hashed tokens)
+7. Organization activity timeline
+8. PostgreSQL RLS policies that deny cross-tenant access
+9. Secretless CI + separate non-skippable integration release gate (local Supabase)
 
 ## Quick start
 
@@ -42,6 +45,14 @@ cp .env.example .env.local
 supabase/migrations/20261011000000_init_tenant_foundation.sql
 supabase/migrations/20261011000001_harden_member_role_policies.sql
 supabase/migrations/20261012000000_align_organizations_insert_rpc_only.sql
+supabase/migrations/20261012010000_product_core.sql
+```
+
+Local isolated database (recommended for RLS gates):
+
+```bash
+npm run db:start
+npm run test:integration:required
 ```
 
 5. In Authentication settings:
@@ -67,7 +78,8 @@ Open [http://localhost:3000](http://localhost:3000).
 npm run lint
 npm run typecheck
 npm run test:unit
-npm test
+npm run test:integration:required   # requires local Supabase or real secrets
+npm run test:e2e                    # requires app running + browsers
 npm run build
 ```
 
@@ -98,16 +110,17 @@ docs/                  # Architecture, security, development notes
 - [Architecture](docs/architecture.md)
 - [Security](docs/security.md)
 - [Development](docs/development.md)
+- [Case study](docs/case-study.md)
 - [Day 02 review](docs/day-02-review.md)
 - [Day 03 remediation plan](docs/day-03-remediation-plan.md)
+- [Day 03 product verification](docs/day-03-product-verification.md)
 
 ## Known limitations
 
-- Full project/document product scope is not part of the Day 03 P0 blocker fix.
-- Organization invite flows are not implemented; members are created through the `create_organization` RPC as owners.
-- End-to-end browser tests are not included.
-- RLS integration tests require a live Supabase project and are skipped in secretless CI.
-- Local Supabase CLI/Docker is not required for app development; fresh local DB reset is optional ops tooling.
+- Hosted Supabase still needs `20261012010000_product_core.sql` applied before production product features work there.
+- Production deploy URL / demo video are tracked separately once evidence exists.
+- Organization invite/billing flows are not implemented; portal tokens cover external client access.
+- Secretless CI skips credentialed RLS; use the integration release gate (or local `db:start`) for non-skippable proof.
 
 ## Suggested first commit
 

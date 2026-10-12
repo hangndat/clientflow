@@ -12,7 +12,9 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:integration:required": "INTEGRATION_REQUIRED=1 vitest run tests/integration",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
+
     "db:start": "npx supabase start",
     "db:stop": "npx supabase stop",
     "db:status": "npx supabase status",
@@ -27,6 +29,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@tailwindcss/turbopack": "^4",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
