@@ -8,6 +8,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/login",
   "/signup",
   "/auth",
+  "/portal",
 ] as const;
 
 function isPublicPath(pathname: string): boolean {

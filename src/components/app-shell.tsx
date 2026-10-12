@@ -28,12 +28,24 @@ export function AppShell({
             >
               ClientFlow
             </Link>
-            <nav className="flex items-center gap-4 text-sm text-slate-600">
+            <nav className="flex flex-wrap items-center gap-3 text-sm text-slate-600 sm:gap-4">
               <Link className="hover:text-teal-800" href="/dashboard">
                 Dashboard
               </Link>
               <Link className="hover:text-teal-800" href="/clients">
                 Clients
+              </Link>
+              <Link className="hover:text-teal-800" href="/projects">
+                Projects
+              </Link>
+              <Link className="hover:text-teal-800" href="/documents">
+                Documents
+              </Link>
+              <Link className="hover:text-teal-800" href="/activity">
+                Activity
+              </Link>
+              <Link className="hover:text-teal-800" href="/portal">
+                Portal
               </Link>
               <Link className="hover:text-teal-800" href="/onboarding">
                 Organizations

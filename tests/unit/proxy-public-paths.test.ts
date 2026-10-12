@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
  * Keep these expectations aligned when route protection changes.
  */
 function isPublicPath(pathname: string): boolean {
-  const prefixes = ["/", "/login", "/signup", "/auth"] as const;
+  const prefixes = ["/", "/login", "/signup", "/auth", "/portal"] as const;
   if (pathname === "/") return true;
   return prefixes.some(
     (prefix) => prefix !== "/" && pathname.startsWith(prefix),
@@ -18,11 +18,15 @@ describe("proxy public path policy", () => {
     expect(isPublicPath("/login")).toBe(true);
     expect(isPublicPath("/signup")).toBe(true);
     expect(isPublicPath("/auth/callback")).toBe(true);
+    expect(isPublicPath("/portal/abc")).toBe(true);
   });
 
   it("protects application routes", () => {
     expect(isPublicPath("/dashboard")).toBe(false);
     expect(isPublicPath("/clients")).toBe(false);
+    expect(isPublicPath("/projects")).toBe(false);
+    expect(isPublicPath("/documents")).toBe(false);
     expect(isPublicPath("/onboarding")).toBe(false);
   });
 });
+

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { recordActivity } from "@/lib/activity";
 import { requireUser } from "@/lib/auth";
 import { assertOrgMembership } from "@/lib/organization";
 import {
@@ -59,8 +60,19 @@ export async function createClientAction(
     return { error: error.message };
   }
 
+  if (data?.id) {
+    await recordActivity(supabase, {
+      organizationId: parsed.data.organizationId,
+      entityType: "client",
+      entityId: data.id,
+      action: "created",
+      summary: `Created client “${parsed.data.name}”`,
+    });
+  }
+
   revalidatePath("/clients");
   revalidatePath("/dashboard");
+  revalidatePath("/activity");
   if (data?.id) {
     redirect(`/clients/${data.id}`);
   }
@@ -114,9 +126,18 @@ export async function updateClientAction(
     return { error: "Client not found or not accessible" };
   }
 
+  await recordActivity(supabase, {
+    organizationId: parsed.data.organizationId,
+    entityType: "client",
+    entityId: parsed.data.clientId,
+    action: "updated",
+    summary: `Updated client “${parsed.data.name}”`,
+  });
+
   revalidatePath("/clients");
   revalidatePath(`/clients/${parsed.data.clientId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/activity");
   return { success: "Client updated" };
 }
 
@@ -161,7 +182,16 @@ export async function deleteClientAction(
     };
   }
 
+  await recordActivity(supabase, {
+    organizationId: parsed.data.organizationId,
+    entityType: "client",
+    entityId: parsed.data.clientId,
+    action: "deleted",
+    summary: "Deleted a client record",
+  });
+
   revalidatePath("/clients");
   revalidatePath("/dashboard");
+  revalidatePath("/activity");
   redirect("/clients");
 }
