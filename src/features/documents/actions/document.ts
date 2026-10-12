@@ -13,6 +13,7 @@ import {
 export type DocumentActionState = {
   error?: string;
   success?: string;
+  downloadUrl?: string;
 };
 
 const ALLOWED_MIME = new Set([
@@ -87,7 +88,14 @@ export async function uploadDocumentAction(
   });
 
   if (insertError) {
-    await supabase.storage.from("org-documents").remove([storagePath]);
+    const { error: cleanupError } = await supabase.storage
+      .from("org-documents")
+      .remove([storagePath]);
+    if (cleanupError) {
+      return {
+        error: `${insertError.message} (also failed to clean up upload: ${cleanupError.message})`,
+      };
+    }
     return { error: insertError.message };
   }
 
@@ -101,6 +109,7 @@ export async function uploadDocumentAction(
 
   revalidatePath("/documents");
   revalidatePath("/dashboard");
+  revalidatePath("/activity");
   return { success: "Document uploaded" };
 }
 
@@ -132,15 +141,37 @@ export async function deleteDocumentAction(
   if (loadError) return { error: loadError.message };
   if (!doc) return { error: "Document not found" };
 
-  const { error: deleteError } = await supabase
+  // Remove storage object first so a failed delete does not leave a DB row
+  // pointing at a missing file. Orphan storage is preferable to broken metadata.
+  const { error: storageError } = await supabase.storage
+    .from("org-documents")
+    .remove([doc.storage_path]);
+
+  if (storageError) {
+    return {
+      error: `Failed to delete storage object: ${storageError.message}`,
+    };
+  }
+
+  const { data: deleted, error: deleteError } = await supabase
     .from("documents")
     .delete()
     .eq("id", doc.id)
-    .eq("organization_id", parsed.data.organizationId);
+    .eq("organization_id", parsed.data.organizationId)
+    .select("id")
+    .maybeSingle();
 
-  if (deleteError) return { error: deleteError.message };
-
-  await supabase.storage.from("org-documents").remove([doc.storage_path]);
+  if (deleteError) {
+    return {
+      error: `Storage removed but database delete failed: ${deleteError.message}`,
+    };
+  }
+  if (!deleted) {
+    return {
+      error:
+        "Storage removed but document row was not deleted (missing permissions or already gone)",
+    };
+  }
 
   await recordActivity(supabase, {
     organizationId: parsed.data.organizationId,
@@ -152,5 +183,40 @@ export async function deleteDocumentAction(
 
   revalidatePath("/documents");
   revalidatePath("/dashboard");
+  revalidatePath("/activity");
   return { success: "Document deleted" };
+}
+
+export async function createStaffDocumentDownloadUrlAction(
+  documentId: string,
+  organizationId: string,
+): Promise<DocumentActionState> {
+  if (!documentId || !organizationId) {
+    return { error: "Missing document or organization" };
+  }
+
+  const { supabase } = await requireUser();
+  if (!(await assertOrgMembership(supabase, organizationId))) {
+    return { error: "You do not have access to this organization" };
+  }
+
+  const { data: doc, error } = await supabase
+    .from("documents")
+    .select("id, storage_path")
+    .eq("id", documentId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error) return { error: error.message };
+  if (!doc) return { error: "Document not found" };
+
+  const { data: signed, error: signedError } = await supabase.storage
+    .from("org-documents")
+    .createSignedUrl(doc.storage_path, 60);
+
+  if (signedError || !signed?.signedUrl) {
+    return { error: signedError?.message ?? "Could not create download URL" };
+  }
+
+  return { success: "Download ready", downloadUrl: signed.signedUrl };
 }

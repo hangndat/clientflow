@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { DeleteDocumentButton } from "@/features/documents/components/delete-document-button";
+import { DocumentDownloadButton } from "@/features/documents/components/document-download-button";
 import { DocumentUploadForm } from "@/features/documents/components/document-upload-form";
 import { requireUser } from "@/lib/auth";
 import { resolveActiveOrganization } from "@/lib/organization";
@@ -86,12 +87,18 @@ export default async function DocumentsPage() {
                     {doc.size_bytes ? ` · ${Math.round(doc.size_bytes / 1024)} KB` : ""}
                   </p>
                 </div>
-                {canDelete ? (
-                  <DeleteDocumentButton
+                <div className="flex flex-wrap items-center gap-2">
+                  <DocumentDownloadButton
                     documentId={doc.id}
                     organizationId={activeOrganization.id}
                   />
-                ) : null}
+                  {canDelete ? (
+                    <DeleteDocumentButton
+                      documentId={doc.id}
+                      organizationId={activeOrganization.id}
+                    />
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>

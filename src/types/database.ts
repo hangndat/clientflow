@@ -332,6 +332,16 @@ export type Database = {
         Args: { token_hash: string };
         Returns: Database["public"]["Tables"]["documents"]["Row"][];
       };
+      portal_get_document: {
+        Args: { token_hash: string; document_id: string };
+        Returns: {
+          id: string;
+          title: string;
+          storage_path: string;
+          mime_type: string | null;
+          size_bytes: number | null;
+        }[];
+      };
     };
     Enums: {
       organization_role: OrganizationRole;

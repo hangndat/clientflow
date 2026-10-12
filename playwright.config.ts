@@ -15,14 +15,17 @@ export default defineConfig({
   },
   projects: [
     {
-      // Prefer system Chrome locally when Playwright browser downloads hang;
-      // CI Ubuntu images can install Playwright Chromium via `npx playwright install --with-deps`.
+      // Local tip: PLAYWRIGHT_CHANNEL=chrome uses system Chrome if Playwright
+      // Chromium downloads hang. CI installs Playwright Chromium normally.
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        channel: process.env.PLAYWRIGHT_CHANNEL ?? "chrome",
+        ...(process.env.PLAYWRIGHT_CHANNEL
+          ? { channel: process.env.PLAYWRIGHT_CHANNEL }
+          : {}),
       },
     },
   ],
 });
+
 

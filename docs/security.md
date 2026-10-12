@@ -38,7 +38,11 @@ Apply incremental hardening on existing projects (in order):
 ```text
 supabase/migrations/20261011000001_harden_member_role_policies.sql
 supabase/migrations/20261012000000_align_organizations_insert_rpc_only.sql
+supabase/migrations/20261012010000_product_core.sql
+supabase/migrations/20261012120000_harden_tenant_integrity.sql
 ```
+
+`log_activity` requires an authenticated org member. Composite foreign keys keep `projects` / `documents` / `portal_tokens` client and project references inside the same `organization_id`.
 
 ## Auth callback and Supabase Auth settings
 
@@ -55,7 +59,7 @@ supabase/migrations/20261012000000_align_organizations_insert_rpc_only.sql
 
 - Email confirmation policy depends on Supabase project settings; built-in SMTP is rate-limited on free tiers.
 - No application-layer rate limiting yet.
-- No audit log for membership or client mutations yet.
-- Secretless CI proves lint/typecheck/unit/build only. Live RLS/role integration tests require project credentials and are skipped in GitHub Actions unless secrets are configured.
+- Secretless CI proves lint/typecheck/unit/build only. Non-skippable RLS/E2E proof is the integration release gate (local Supabase).
 - Preview hosts must be added to both `AUTH_ALLOWED_ORIGINS` (or `VERCEL_URL`) **and** the Supabase Redirect URL allow-list, or callbacks fall back to the canonical site origin.
-- `20261012000000_align_organizations_insert_rpc_only.sql` applied on the configured live project (SQL editor success + post-apply probe). Fresh environments must still run migrations in order.
+- Hosted projects that already applied product-core must also apply `20261012120000_harden_tenant_integrity.sql` (operator approval required) before claiming production readiness.
+- Portal downloads need server-only `SUPABASE_SERVICE_ROLE_KEY` after `portal_get_document` authorization.

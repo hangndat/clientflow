@@ -73,9 +73,22 @@ export default async function ExternalPortalPage({ params }: Props) {
           ) : (
             <ul className="mt-4 space-y-3">
               {(documents ?? []).map((doc) => (
-                <li key={doc.id} className="rounded-lg border border-slate-200 px-4 py-3">
-                  <p className="font-medium">{doc.title}</p>
-                  <p className="text-sm text-slate-600">{doc.mime_type || "file"}</p>
+                <li
+                  key={doc.id}
+                  className="flex flex-col gap-2 rounded-lg border border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="font-medium">{doc.title}</p>
+                    <p className="text-sm text-slate-600">
+                      {doc.mime_type || "file"}
+                    </p>
+                  </div>
+                  <a
+                    href={`/api/portal/${encodeURIComponent(token)}/documents/${doc.id}/download`}
+                    className="inline-flex rounded-md border border-teal-300 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-900 hover:bg-teal-100"
+                  >
+                    Download
+                  </a>
                 </li>
               ))}
             </ul>
