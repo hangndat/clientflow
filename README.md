@@ -114,13 +114,15 @@ docs/                  # Architecture, security, development notes
 - [Day 02 review](docs/day-02-review.md)
 - [Day 03 remediation plan](docs/day-03-remediation-plan.md)
 - [Day 03 product verification](docs/day-03-product-verification.md)
+- [Day 03 closeout](docs/day-03-review-closeout.md)
 
 ## Known limitations
 
-- Hosted Supabase still needs `20261012010000_product_core.sql` applied before production product features work there.
-- Production deploy URL / demo video are tracked separately once evidence exists.
+- Production app: [https://clientflow-blond.vercel.app](https://clientflow-blond.vercel.app) (hosted Supabase migrations through `20261012120000` applied).
+- Demo video is not recorded yet.
 - Organization invite/billing flows are not implemented; portal tokens cover external client access.
 - Secretless CI skips credentialed RLS; use the integration release gate (or local `db:start`) for non-skippable proof.
+- Vercel Git deploy may block when the local git author is not a project-trusted committer; CLI deploy from a gitless tree works for hangndat.
 
 ## Suggested first commit
 

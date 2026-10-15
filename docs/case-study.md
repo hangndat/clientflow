@@ -32,8 +32,8 @@ Agencies need a tenant-safe place to manage clients, projects, and shared files 
 
 ## Limitations (honest)
 
-- Hosted production migration `20261012010000_product_core.sql` still requires operator apply on the live Supabase project.
-- Production deployment URL / Vercel evidence is **not** claimed in this document until a deploy run is recorded.
+- Hosted Supabase migrations through `20261012120000_harden_tenant_integrity.sql` are applied (history repaired + forward push).
+- Production URL: [https://clientflow-blond.vercel.app](https://clientflow-blond.vercel.app) (Vercel project `clientflow`, SSO deployment protection disabled).
 - Playwright browser download of Chromium headless shell hangs on this Mac host; E2E was executed with system Chrome (`PLAYWRIGHT_CHANNEL=chrome`).
 - Demo video not recorded in this session.
 - No invite/billing flows; portal tokens are the external access mechanism for Day 03.
